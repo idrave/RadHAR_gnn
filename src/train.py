@@ -79,7 +79,6 @@ if __name__ == '__main__':
                 print('[TRAIN {:0>5d} | {:0>3d}] loss {:.5f}'.format(
                         i + 1, epoch + 1, loss))
             batch_num += 1
-            break
         scheduler.step()
         print('[TRAIN {}] epoch loss:{:.5f}\t elapsed:{:.2f}'.format(
                         epoch + 1, epoch_loss, time.time()-start))
@@ -95,7 +94,6 @@ if __name__ == '__main__':
             outputs = model(inputs, frame_sz)
             _, pred = torch.max(outputs, 1)
             test_correct += torch.sum(pred == targets)
-            break
         acc = 100.0*test_correct/len(test_loader)
         print('[VALID {}] accuracy:{}\t elapsed:{:.2f}'.format(
                         epoch + 1, acc, time.time()-start))
