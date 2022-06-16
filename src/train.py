@@ -25,6 +25,7 @@ def parse_args(args=None):
     # Model args
     parser.add_argument('-r', type=float, default=0.05, help="Radius for PointGNN adjacency")
     parser.add_argument('--layers', type=int, default=3, help="Number of PointGNN layers")
+    parser.add_argument('--dropout', type=float, default=0.1, help="Dropout probability")
     # Scheduler args
     parser.add_argument('--steplr_size', type=int, default=1, help="Frequency of scheduler step in epochs")
     parser.add_argument('--steplr_gamma', type=float, default=0.9, help="Learning rate decay factor")
@@ -47,7 +48,7 @@ if __name__ == '__main__':
     train_loader = DataLoader(dataset = dataset,batch_size=batch_size,shuffle=True,num_workers=num_workers)
     test_loader = DataLoader(dataset = dataset_test,batch_size=test_batch,shuffle=False,num_workers=num_workers)
     print(device)
-    model = HAR_PointGNN(r =args.r, T=args.layers, state_dim=8)
+    model = HAR_PointGNN(r =args.r, T=args.layers, state_dim=8, dropout=args.dropout)
     model.to(device)
 
     # if os.path.exists('./models/HAR_PointGNN.pkl'):
