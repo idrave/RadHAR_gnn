@@ -4,7 +4,7 @@ import time
 
 
 class PointGNN(nn.Module):
-    def __init__(self, T=3, r=0.05, state_dim = 8):
+    def __init__(self, T=3, r=0.05, state_dim = 8, dropout=0.1):
         super(PointGNN, self).__init__()
         self.T = T
         self.r = r
@@ -16,7 +16,7 @@ class PointGNN(nn.Module):
                 nn.Linear(state_dim,64),
                 nn.ReLU(),
                 nn.Linear(64,128),
-                nn.ReLU(),
+                nn.ReLU(), nn.BatchNorm1d(128), nn.Dropout(dropout),
                 nn.Linear(128,3),
                 ) 
             for i in range(self.T)
@@ -29,7 +29,7 @@ class PointGNN(nn.Module):
                 nn.Linear(64,128),
                 nn.ReLU(),
                 nn.Linear(128,128),
-                nn.ReLU(),
+                nn.ReLU(), nn.BatchNorm1d(128), nn.Dropout(dropout)
                 ) 
             for i in range(self.T)
         ])
@@ -40,7 +40,7 @@ class PointGNN(nn.Module):
                 nn.Linear(128,64),
                 nn.ReLU(),
                 nn.Linear(64,32),
-                nn.ReLU(),
+                nn.ReLU(), nn.BatchNorm1d(32), nn.Dropout(dropout),
                 nn.Linear(32,state_dim),
                 nn.ReLU(),
                 )
@@ -73,10 +73,11 @@ class PointGNN(nn.Module):
 
 
 class HAR_PointGNN(nn.Module):
-    def __init__(self,r = 0.5,output_dim = 5, T = 3, state_dim = 3, frame_num=60):
+    def __init__(self,r = 0.5,output_dim = 5, T = 3, state_dim = 8, frame_num=60, dropout=0.1):
         super(HAR_PointGNN, self).__init__()
-        self.pgnn = PointGNN(T=T, r=r, state_dim = state_dim)
-        self.lstm_net = nn.LSTM(336, 16,num_layers=1, dropout=0,bidirectional=True)
+        self.pgnn = PointGNN(T=T, r=r, state_dim = state_dim, dropout=dropout)
+        self.lstm_net = nn.LSTM(336, 16,num_layers=1, dropout=dropout, bidirectional=True)
+        self.bn = nn.BatchNorm1d(frame_num*2*16)
         self.dense = nn.Linear(frame_num*2*16,output_dim)
 
     def forward(self,state,frame_sz):
@@ -87,6 +88,7 @@ class HAR_PointGNN(nn.Module):
         x = x.reshape((batch_size, seq_len, -1)).permute(1,0,2)
         lstm_out,hn = self.lstm_net(x)
         lstm_out = lstm_out.permute(1,0,2).reshape(batch_size,-1)
+        lstm_out = self.bn(lstm_out)
         logits = self.dense(lstm_out)
         return logits
 
