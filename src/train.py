@@ -1,10 +1,11 @@
+from secrets import choice
 import torch
 import torch.nn as nn
 import os
 from MyDataset import LMDBDataset
 from torch.utils.data import Dataset, DataLoader
 import argparse
-from PointGNN import HAR_PointGNN
+from PointGNN import HAR_PointGNN, PointGNN, MMPointGNN
 from pathlib import Path
 import time
 
@@ -23,6 +24,7 @@ def parse_args(args=None):
     parser.add_argument('--bs_eval', type=int, default=8, help="Evaluation batch size")
     parser.add_argument('--lr', type=float, default=1e-4, help="Initial learning rate")
     # Model args
+    parser.add_argument('--model', choices=['pointgnn','mmpointgnn'], default='pointgnn', help="Model to be trained")
     parser.add_argument('-r', type=float, default=0.05, help="Radius for PointGNN adjacency")
     parser.add_argument('--layers', type=int, default=3, help="Number of PointGNN layers")
     parser.add_argument('--dropout', type=float, default=0.1, help="Dropout probability")
@@ -48,7 +50,11 @@ if __name__ == '__main__':
     train_loader = DataLoader(dataset = dataset,batch_size=batch_size,shuffle=True,num_workers=num_workers)
     test_loader = DataLoader(dataset = dataset_test,batch_size=test_batch,shuffle=False,num_workers=num_workers)
     print(device)
-    model = HAR_PointGNN(r =args.r, T=args.layers, state_dim=8, dropout=args.dropout)
+    if args.model == "pointgnn":
+        gnn = PointGNN(T=args.layers, r=args.r, state_dim=8, dropout=args.dropout)
+    else:
+        gnn = MMPointGNN(T=args.layers, r=args.r, state_dim=8, dropout=args.dropout)
+    model = HAR_PointGNN(gnn, dropout=args.dropout)
     model.to(device)
 
     # if os.path.exists('./models/HAR_PointGNN.pkl'):
@@ -95,6 +101,6 @@ if __name__ == '__main__':
             _, pred = torch.max(outputs, 1)
             test_correct += torch.sum(pred == targets)
         acc = 100.0*test_correct/len(test_loader)
-        print('[VALID {}] accuracy:{}\t elapsed:{:.2f}'.format(
+        print('[VALID {}] accuracy:{:.3f}\t elapsed:{:.2f}'.format(
                         epoch + 1, acc, time.time()-start))
 
