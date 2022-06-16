@@ -112,8 +112,8 @@ class LMDBDataset(Dataset):
             label = int.from_bytes(txn.get(label_key),'big')
         sequence = self.pad(sequence, frame_sz)
         sequence = torch.tensor(sequence).float()
-        frame_sz = torch.tensor(frame_sz).int()
-        label = torch.tensor(label).int()
+        frame_sz = torch.tensor(frame_sz).long()
+        label = torch.tensor(label).long()
         if self.transform is not None:
             sequence = self.transform(sequence)
         return sequence, label, frame_sz
