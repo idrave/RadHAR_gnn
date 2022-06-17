@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from MyDataset import LMDBDataset
+from data import LMDBDataset
 from torch.utils.data import Dataset, DataLoader
 import argparse
 from PointGNN import HAR_PointGNN, PointGNN, MMPointGNN
@@ -49,9 +49,9 @@ if __name__ == '__main__':
     test_loader = DataLoader(dataset = dataset_test,batch_size=test_batch,shuffle=False,num_workers=num_workers)
     print(device)
     if args.model == "pointgnn":
-        gnn = PointGNN(T=args.layers, r=args.r, state_dim=8, dropout=args.dropout)
+        gnn = PointGNN(layers=args.layers, r=args.r, state_dim=8, dropout=args.dropout)
     else:
-        gnn = MMPointGNN(T=args.layers, r=args.r, state_dim=8, dropout=args.dropout)
+        gnn = MMPointGNN(layers=args.layers, r=args.r, state_dim=8, dropout=args.dropout)
     model = HAR_PointGNN(gnn, dropout=args.dropout)
     model.to(device)
 
