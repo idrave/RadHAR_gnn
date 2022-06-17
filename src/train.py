@@ -1,7 +1,5 @@
-from secrets import choice
 import torch
 import torch.nn as nn
-import os
 from MyDataset import LMDBDataset
 from torch.utils.data import Dataset, DataLoader
 import argparse
@@ -86,8 +84,8 @@ if __name__ == '__main__':
                         i + 1, epoch + 1, loss))
             batch_num += 1
         scheduler.step()
-        print('[TRAIN {}] epoch loss:{:.5f}\t elapsed:{:.2f}'.format(
-                        epoch + 1, epoch_loss, time.time()-start))
+        print('[TRAIN {}] epoch loss {:.5f}\t lr {}\t elapsed {:.2f}'.format(
+                        epoch + 1, epoch_loss, adam.param_groups[0]['lr'], time.time()-start))
         # Save model
         torch.save(model.state_dict(), "./models/HAR_PointGNN.pkl")
         # Evaluate model
@@ -100,7 +98,7 @@ if __name__ == '__main__':
             outputs = model(inputs, frame_sz)
             _, pred = torch.max(outputs, 1)
             test_correct += torch.sum(pred == targets)
-        acc = 100.0*test_correct/len(test_loader)
+        acc = 100.0*test_correct/len(dataset_test)
         print('[VALID {}] accuracy:{:.3f}\t elapsed:{:.2f}'.format(
                         epoch + 1, acc, time.time()-start))
 

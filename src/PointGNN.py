@@ -4,11 +4,12 @@ import torch.nn as nn
 import time
 
 class BasePointGNN(nn.Module):
-    def __init__(self, r=0.05, T=3, state_dim = 8, dropout=0.1):
+    def __init__(self, r=0.05, T=3, state_dim = 8, dropout=0.1, mask=False):
         super().__init__()
         self.r = r
         self.T = T
         self.state_dim = state_dim
+        self.mask = mask
         
         # input(batch_size, n_points, state_dim) output(batch_size, n_points, state_dim)
         self.MLP_h = nn.ModuleList([
@@ -50,8 +51,8 @@ class BasePointGNN(nn.Module):
         raise NotImplementedError()
 
 class PointGNN(BasePointGNN):
-    def __init__(self, T=3, r=0.05, state_dim = 8, dropout=0.1):
-        super().__init__(r=r, T=T, state_dim=state_dim, dropout=dropout)
+    def __init__(self, T=3, r=0.05, state_dim = 8, dropout=0.1, mask=False):
+        super().__init__(r=r, T=T, state_dim=state_dim, dropout=dropout, mask=mask)
 
     def forward(self, state, frame_sz):
         """
@@ -61,9 +62,11 @@ class PointGNN(BasePointGNN):
         x = state[:,:,:3]
         diff = x.unsqueeze(1) - x.unsqueeze(2) # x_i - x_j
         adj = torch.sum(diff*diff,dim=-1) < self.r
-        rang = torch.arange(0,n_points).to(state.device)
-        mask = torch.max(rang.unsqueeze(0),rang.unsqueeze(1)) < frame_sz[:,None,None]
-        adj = torch.logical_and(adj, mask)
+        
+        if self.mask:
+            rang = torch.arange(0,n_points).to(state.device)
+            mask = torch.max(rang.unsqueeze(0),rang.unsqueeze(1)) < frame_sz[:,None,None]
+            adj = torch.logical_and(adj, mask)
 
         for t in range(self.T):
             delta = self.MLP_h[t](state)
@@ -77,9 +80,17 @@ class PointGNN(BasePointGNN):
 
         return state
 
+class ModifiedHardsigmoid(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.hard_sigmoid = nn.Hardsigmoid()
+    def forward(self, x):
+        # torch hard sigmoid is increasing in domain [-3,3], modify to [-1,1]
+        return self.hard_sigmoid(x*3.0) 
+
 class MMPointGNN(BasePointGNN):
-    def __init__(self, r=0.05, T=3, state_dim = 8, dropout=0.1):
-        super().__init__(r=r, T=T, state_dim=state_dim, dropout=dropout)
+    def __init__(self, r=0.05, T=3, state_dim = 8, dropout=0.1, mask=False):
+        super().__init__(r=r, T=T, state_dim=state_dim, dropout=dropout, mask=mask)
         # input(N,42,42,128) output(N, 42, 42, )
         self.MLP_r = nn.ModuleList([
             nn.Sequential(
@@ -93,6 +104,7 @@ class MMPointGNN(BasePointGNN):
                 ) 
             for i in range(self.T)
         ])
+        self.mhs = ModifiedHardsigmoid()
 
     def forward(self, state, frame_sz):
         """
@@ -102,9 +114,10 @@ class MMPointGNN(BasePointGNN):
         x = state[:,:,:3]
         diff = x.unsqueeze(1) - x.unsqueeze(2) # x_i - x_j
         adj = torch.sum(diff*diff,dim=-1) < self.r
-        rang = torch.arange(0,n_points).to(state.device)
-        mask = torch.max(rang.unsqueeze(0),rang.unsqueeze(1)) < frame_sz[:,None,None]
-        adj = torch.logical_and(adj, mask)
+        if self.mask:
+            rang = torch.arange(0,n_points).to(state.device)
+            mask = torch.max(rang.unsqueeze(0),rang.unsqueeze(1)) < frame_sz[:,None,None]
+            adj = torch.logical_and(adj, mask)
 
         for t in range(self.T):
             delta = self.MLP_h[t](state)
@@ -113,10 +126,11 @@ class MMPointGNN(BasePointGNN):
             eij_output = self.MLP_f[t](eij_input)
             delta_a = self.MLP_r[t](eij_output).squeeze(-1)
             if self.training:
-                adj = nn.Hardsigmoid()(adj + delta_a)
+                adj = self.mhs(adj + delta_a)
             else:
                 adj = adj + delta_a > 0.0
-            adj = adj * mask
+            if self.mask:
+                adj = adj * mask
             eij_output = adj.unsqueeze(-1) * eij_output
             pool = torch.max(eij_output,dim=-2)[0]
 
