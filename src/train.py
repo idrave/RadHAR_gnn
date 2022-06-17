@@ -13,22 +13,25 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 def parse_args(args=None):
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', '--data_path', required=True, help="Path to data folder")
+    parser.add_argument('-d', '--data_path', default='data', help="Path to data folder")
     parser.add_argument('--replace', action='store_true', help="Whether to replace existing LMDB in data directory")
     parser.add_argument('--num_workers', type=int, default=1, help="Number of workers for DataLoaders")
-    parser.add_argument('--epochs', type=int, default=20, help="Number of epochs to train for")
     parser.add_argument('--log_steps', type=int, default=300, help="Train logging frequency in number of batches")
+    parser.add_argument('--epochs', type=int, default=20, help="Number of epochs to train for")
     parser.add_argument('--bs_train', type=int, default=8, help="Training batch size")
     parser.add_argument('--bs_eval', type=int, default=8, help="Evaluation batch size")
-    parser.add_argument('--lr', type=float, default=1e-4, help="Initial learning rate")
+    
     # Model args
-    parser.add_argument('--model', choices=['pointgnn','mmpointgnn'], default='pointgnn', help="Model to be trained")
-    parser.add_argument('-r', type=float, default=0.05, help="Radius for PointGNN adjacency")
-    parser.add_argument('--layers', type=int, default=3, help="Number of PointGNN layers")
-    parser.add_argument('--dropout', type=float, default=0.1, help="Dropout probability")
+    model_args = parser.add_argument_group(title='Model')
+    model_args.add_argument('--model', choices=['pointgnn','mmpointgnn'], default='pointgnn', help="Model to be trained (default: pointgnn)")
+    model_args.add_argument('-r', type=float, default=0.05, help="Radius for PointGNN adjacency")
+    model_args.add_argument('--layers', type=int, default=3, help="Number of PointGNN layers")
+    model_args.add_argument('--dropout', type=float, default=0.1, help="Dropout probability")
     # Scheduler args
-    parser.add_argument('--steplr_size', type=int, default=1, help="Frequency of scheduler step in epochs")
-    parser.add_argument('--steplr_gamma', type=float, default=0.9, help="Learning rate decay factor")
+    opt_args = parser.add_argument_group(title='Optimizer/Scheduler')
+    opt_args.add_argument('--lr', type=float, default=1e-4, help="Initial learning rate")
+    opt_args.add_argument('--steplr_size', type=int, default=1, help="Frequency of scheduler step in epochs")
+    opt_args.add_argument('--steplr_gamma', type=float, default=0.9, help="Learning rate decay factor")
     if args:
         return parser.parse_args(args)
     return parser.parse_args()
@@ -47,7 +50,7 @@ if __name__ == '__main__':
     dataset_test = LMDBDataset(str(data_path/'Test'),str(data_path/'lmdbData_test'),frame_num,replace=args.replace)
     train_loader = DataLoader(dataset = dataset,batch_size=batch_size,shuffle=True,num_workers=num_workers)
     test_loader = DataLoader(dataset = dataset_test,batch_size=test_batch,shuffle=False,num_workers=num_workers)
-    print(device)
+    print('Device:',device)
     if args.model == "pointgnn":
         gnn = PointGNN(layers=args.layers, r=args.r, state_dim=8, dropout=args.dropout)
     else:
@@ -55,6 +58,7 @@ if __name__ == '__main__':
     model = HAR_PointGNN(gnn, dropout=args.dropout)
     model.to(device)
 
+    Path('models').mkdir(exist_ok=True)
     # if os.path.exists('./models/HAR_PointGNN.pkl'):
     #     model.load_state_dict(torch.load('./models/HAR_PointGNN.pkl',map_location = device))
     #     print("load model sucessfully")
