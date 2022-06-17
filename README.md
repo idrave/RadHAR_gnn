@@ -2,7 +2,7 @@
 
 ## Code structure
 
-The RadHAR data must be copied into a `data` directory with the following structure:
+The RadHAR data must be copied into a `data` directory resulting in the following structure:
 
 ```
 .
@@ -30,7 +30,7 @@ The RadHAR data must be copied into a `data` directory with the following struct
 
 The required packages can be installed with:
 
-    pip install r requirements.txt
+    pip install -r requirements.txt
 
 ## Running the code
 
@@ -38,7 +38,7 @@ To train the model with default parameters use command:
 ### For Point-GNN
     python src/train.py --model pointgnn
 ### For MM-Point-GNN
-    python src/train.py --model pointgnn
+    python src/train.py --model mmpointgnn
 
 Several options are available for training and can be displayed with:
 
